@@ -1,4 +1,4 @@
-# Anonymous Motif-Conditioned Graph Tokenizer
+# GMT
 
 This directory is a clean, anonymous submission copy of the main method implementation. It does not import another local repository, does not use machine-specific absolute paths, and does not contain private checkpoints or datasets. The original working tree is not modified by this directory.
 
