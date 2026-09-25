@@ -1,0 +1,12 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_molbace.json",
+  "batch_size": 256,
+  "mask_probability": 0.15,
+  "pretrain_epochs": 200,
+  "pretrain_learning_rate": 0.0003,
+  "pretrain_dropout": 0.05,
+  "pretrain_weight_decay": 1e-05,
+  "pretrain_warmup_epochs": 10,
+  "finetune_seed": 0,
+  "finetune_repeats": 5
+}

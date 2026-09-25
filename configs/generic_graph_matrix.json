@@ -1,0 +1,75 @@
+{
+  "protocol": "fixed_hyperparameters_five_full_repeats_validation_selected",
+  "methods": [
+    "gin",
+    "gcn",
+    "gat",
+    "gqt",
+    "vqgraph",
+    "nodeid",
+    "mole_bert"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "datasets": {
+    "collab": {
+      "config": "configs/collab.json",
+      "split_manifest": "data/collab/manifest.json",
+      "training": {
+        "batch_size": 16,
+        "baseline_layers": 4,
+        "baseline_dropout": 0.1,
+        "epochs": 100,
+        "tokenizer_epochs": 50,
+        "transformer_layers": 4,
+        "transformer_dropout": 0.1
+      }
+    },
+    "imdb_binary": {
+      "config": "configs/imdb_binary.json",
+      "split_manifest": "data/imdb_binary/manifest.json",
+      "training": {
+        "batch_size": 32,
+        "baseline_layers": 4,
+        "baseline_dropout": 0.5,
+        "epochs": 100,
+        "warmup_epochs": 10,
+        "tokenizer_epochs": 50,
+        "transformer_layers": 4,
+        "transformer_dropout": 0.5
+      }
+    }
+  },
+  "training": {
+    "baseline_hidden_dim": 128,
+    "baseline_layers": 4,
+    "baseline_dropout": 0.2,
+    "gat_heads": 4,
+    "batch_size": 128,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-05,
+    "epochs": 100,
+    "warmup_epochs": 10,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "tokenizer_code_dim": 128,
+    "tokenizer_codebook_size": 512,
+    "tokenizer_commitment_weight": 0.25,
+    "tokenizer_mask_probability": 0.15,
+    "tokenizer_learning_rate": 0.0003,
+    "tokenizer_weight_decay": 0.0002,
+    "tokenizer_epochs": 50,
+    "transformer_hidden_dim": 128,
+    "transformer_layers": 4,
+    "transformer_heads": 8,
+    "transformer_ffn_dim": 512,
+    "transformer_dropout": 0.1,
+    "transformer_learning_rate": 0.001,
+    "rwpe_dim": 8
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "codebook_sizes": [
+    16,
+    32,
+    64,
+    128,
+    256,
+    512,
+    1024,
+    2048,
+    4096
+  ],
+  "fit_split": "train",
+  "fit_max_nodes": 200000,
+  "max_eval_nodes": 0,
+  "seed": 0,
+  "kmeans": {
+    "n_init": 1,
+    "max_iter": 30,
+    "batch_size": 4096
+  },
+  "datasets": [
+    {
+      "name": "molhiv",
+      "config": "configs/frozen_node_motif512_molhiv.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/molhiv",
+      "encoder": "categorical"
+    },
+    {
+      "name": "molbace",
+      "config": "configs/frozen_node_motif512_molbace.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/molbace",
+      "encoder": "categorical"
+    },
+    {
+      "name": "molbbbp",
+      "config": "configs/frozen_node_motif512_molbbbp.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/molbbbp",
+      "encoder": "categorical"
+    },
+    {
+      "name": "imdb_binary",
+      "config": "configs/node_token_imdb_binary_raw_gine_v1.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/imdb_binary",
+      "encoder": "raw"
+    },
+    {
+      "name": "sider",
+      "config": "configs/frozen_node_motif512_sider.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/sider",
+      "encoder": "categorical"
+    },
+    {
+      "name": "tox21",
+      "config": "configs/frozen_node_motif512_tox21.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/tox21",
+      "encoder": "categorical"
+    },
+    {
+      "name": "zinc",
+      "config": "configs/frozen_node_motif512_zinc.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/zinc",
+      "encoder": "categorical"
+    },
+    {
+      "name": "molesol",
+      "config": "configs/frozen_node_motif512_molesol.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/molesol",
+      "encoder": "categorical"
+    },
+    {
+      "name": "aqsol",
+      "config": "configs/frozen_node_motif512_aqsol.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/aqsol",
+      "encoder": "categorical"
+    },
+    {
+      "name": "dielectric",
+      "config": "configs/frozen_node_motif512_dielectric.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/dielectric_variant_02",
+      "encoder": "categorical"
+    },
+    {
+      "name": "qm9_12",
+      "config": "configs/frozen_node_motif512_qm9_12.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/qm9_variant_02",
+      "encoder": "categorical"
+    },
+    {
+      "name": "qm8",
+      "config": "configs/frozen_node_motif512_qm8.json",
+      "checkpoint_dir": "checkpoints/node_tokenizers/qm8",
+      "encoder": "categorical"
+    }
+  ]
+}

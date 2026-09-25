@@ -1,0 +1,13 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_aqsol.json",
+  "motif_selection_cache_path": "artifacts/motif_selection/aqsol_true_sed_top10.pt",
+  "motif_top_k": 10,
+  "mask_probability": 0.15,
+  "pretrain_epochs": 200,
+  "pretrain_learning_rate": 0.0003,
+  "pretrain_dropout": 0.05,
+  "pretrain_weight_decay": 1e-05,
+  "pretrain_warmup_epochs": 10,
+  "learning_rate": 0.0002,
+  "dropout": 0.1
+}

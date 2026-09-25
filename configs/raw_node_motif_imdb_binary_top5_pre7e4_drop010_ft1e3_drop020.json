@@ -1,0 +1,12 @@
+{
+  "base_config_path": "configs/raw_node_motif_imdb_binary_top5_pre4e4_drop015_ft4e4_drop005.json",
+  "variant": "raw_node_vq256_motif32_top5_pre7e4_drop010_ft1e3_drop020",
+  "pretrain_learning_rate": 0.0007,
+  "pretrain_dropout": 0.1,
+  "pretrain_epochs": 100,
+  "learning_rate": 0.001,
+  "dropout": 0.2,
+  "epochs": 100,
+  "ensemble_top_k": 5,
+  "default_seed": 0
+}

@@ -1,0 +1,6 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_tox21.json",
+  "variant": "canonical_node_vq512_unified_motif256_top10_rwpe8_direct_finetune",
+  "motif_selection_cache_path": "artifacts/motif_selection/tox21_true_sed_top10.pt",
+  "motif_top_k": 10
+}

@@ -1,0 +1,52 @@
+{
+  "protocol": "matbench_v0.1_official_five_fold_validation_selected",
+  "methods": [
+    "gin",
+    "gcn",
+    "gat",
+    "gqt",
+    "vqgraph",
+    "nodeid",
+    "mole_bert"
+  ],
+  "folds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "datasets": {
+    "matbench_dielectric": {
+      "config": "configs/matbench_dielectric.json",
+      "split_manifest": "data/matbench_dielectric/manifest.json"
+    }
+  },
+  "training": {
+    "baseline_hidden_dim": 256,
+    "baseline_layers": 5,
+    "baseline_dropout": 0.2,
+    "gat_heads": 4,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-05,
+    "epochs": 200,
+    "warmup_epochs": 20,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "tokenizer_code_dim": 128,
+    "tokenizer_codebook_size": 512,
+    "tokenizer_commitment_weight": 0.25,
+    "tokenizer_mask_probability": 0.15,
+    "tokenizer_learning_rate": 0.0003,
+    "tokenizer_weight_decay": 0.0002,
+    "tokenizer_epochs": 100,
+    "transformer_hidden_dim": 256,
+    "transformer_layers": 4,
+    "transformer_heads": 8,
+    "transformer_ffn_dim": 512,
+    "transformer_dropout": 0.1,
+    "transformer_learning_rate": 0.0008,
+    "rwpe_dim": 8
+  }
+}

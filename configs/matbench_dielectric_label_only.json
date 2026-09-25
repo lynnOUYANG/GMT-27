@@ -1,0 +1,22 @@
+{
+  "dataset": "matbench_dielectric_label_only",
+  "artifact_path": "data/matbench_dielectric_label_only/dataset.pt",
+  "node_feature_type": "categorical",
+  "node_cardinalities": [
+    92
+  ],
+  "edge_feature_type": "categorical",
+  "edge_cardinalities": [
+    2
+  ],
+  "edge_attr_offset": 0,
+  "task_type": "regression",
+  "out_dim": 1,
+  "metric": "mae",
+  "supervised_loss": "l1",
+  "target_normalization": "train_zscore",
+  "target_names": [
+    "refractive_index"
+  ],
+  "input_contract": "node_label_and_edge_label_only"
+}

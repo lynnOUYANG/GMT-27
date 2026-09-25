@@ -1,0 +1,9 @@
+{
+  "base_config_path": "configs/frozen_node_motif1024_molhiv.json",
+  "mask_probability": 0.15,
+  "pretrain_epochs": 200,
+  "pretrain_learning_rate": 0.0008,
+  "pretrain_dropout": 0.05,
+  "pretrain_weight_decay": 1e-05,
+  "pretrain_warmup_epochs": 10
+}

@@ -1,0 +1,14 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_qm8.json",
+  "variant": "qm8_12_std_node_vq512_motif32_top3_rwpe8_l1_l8ffn2048_wd0_cosine300",
+  "downstream_lr_schedule": "cosine",
+  "pretrain_learning_rate": 0.0003,
+  "pretrain_dropout": 0.1,
+  "pretrain_epochs": 200,
+  "learning_rate": 0.001,
+  "dropout": 0.025,
+  "weight_decay": 0.0,
+  "warmup_epochs": 20,
+  "epochs": 300,
+  "ensemble_top_k": 5
+}

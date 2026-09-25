@@ -1,0 +1,17 @@
+{
+  "dataset": "imdb_binary",
+  "artifact_path": "data/imdb_binary/dataset.pt",
+  "task_type": "multiclass_classification",
+  "metric": "accuracy",
+  "out_dim": 2,
+  "node_feature_type": "categorical",
+  "node_cardinalities": [
+    1
+  ],
+  "edge_feature_type": "categorical",
+  "edge_cardinalities": [
+    1
+  ],
+  "edge_attr_offset": 0,
+  "generic_graph": true
+}

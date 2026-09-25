@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.so
+*.o
+.pytest_cache/
+.venv/
+third_party/gspan_cpp/Compare/gspan_cli
+third_party/vf2_cpp/build/
+artifacts/*
+checkpoints/*
+data/*
+outputs/*
+!artifacts/.gitkeep
+!checkpoints/.gitkeep
+!data/.gitkeep
+!outputs/.gitkeep

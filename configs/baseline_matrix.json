@@ -1,0 +1,88 @@
+{
+  "protocol": "fixed_hyperparameters_five_full_repeats",
+  "methods": [
+    "gin",
+    "gcn",
+    "gat",
+    "gqt",
+    "vqgraph",
+    "nodeid",
+    "mole_bert"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "datasets": {
+    "molhiv": {
+      "config": "configs/frozen_node_motif512_molhiv.json",
+      "split_manifest": "data/molhiv/manifest.json"
+    },
+    "molbace": {
+      "config": "configs/frozen_node_motif512_molbace.json",
+      "split_manifest": "data/molbace/manifest.json"
+    },
+    "zinc": {
+      "config": "configs/frozen_node_motif512_zinc.json",
+      "split_manifest": "data/zinc/manifest.json"
+    },
+    "molesol": {
+      "config": "configs/frozen_node_motif512_molesol.json",
+      "split_manifest": "data/molesol/manifest.json"
+    },
+    "qm9_12": {
+      "config": "configs/frozen_node_motif512_qm9_12.json",
+      "split_manifest": "data/qm9_12_std/manifest.json"
+    },
+    "sider": {
+      "config": "configs/frozen_node_motif512_sider.json",
+      "split_manifest": "data/sider/manifest.json"
+    },
+    "tox21": {
+      "config": "configs/frozen_node_motif512_tox21.json",
+      "split_manifest": "data/tox21/manifest.json"
+    },
+    "aqsol": {
+      "config": "configs/frozen_node_motif512_aqsol.json",
+      "split_manifest": "data/aqsol/manifest.json"
+    },
+    "qm8": {
+      "config": "configs/frozen_node_motif512_qm8.json",
+      "split_manifest": "data/qm8_12_std/manifest.json"
+    },
+    "molbbbp": {
+      "config": "configs/frozen_node_motif512_molbbbp.json",
+      "split_manifest": "data/molbbbp/manifest.json"
+    }
+  },
+  "training": {
+    "baseline_hidden_dim": 256,
+    "baseline_layers": 5,
+    "baseline_dropout": 0.2,
+    "gat_heads": 4,
+    "batch_size": 128,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-05,
+    "epochs": 200,
+    "warmup_epochs": 20,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "tokenizer_code_dim": 128,
+    "tokenizer_codebook_size": 512,
+    "tokenizer_commitment_weight": 0.25,
+    "tokenizer_mask_probability": 0.15,
+    "tokenizer_learning_rate": 0.0003,
+    "tokenizer_weight_decay": 0.0002,
+    "tokenizer_epochs": 100,
+    "transformer_hidden_dim": 256,
+    "transformer_layers": 4,
+    "transformer_heads": 8,
+    "transformer_ffn_dim": 512,
+    "transformer_dropout": 0.1,
+    "transformer_learning_rate": 0.0008,
+    "rwpe_dim": 8
+  }
+}

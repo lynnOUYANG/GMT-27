@@ -1,0 +1,10 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_sider.json",
+  "mask_probability": 0.2,
+  "pretrain_epochs": 200,
+  "pretrain_learning_rate": 0.0005,
+  "pretrain_dropout": 0.15,
+  "pretrain_weight_decay": 1e-05,
+  "pretrain_warmup_epochs": 10,
+  "transformer_pretrain_checkpoint_path": "checkpoints/transformer/sider_default_mask020_lr5e4_drop015_seed0/best.pt"
+}

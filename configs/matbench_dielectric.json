@@ -1,0 +1,19 @@
+{
+  "dataset": "matbench_dielectric",
+  "artifact_path": "data/matbench_dielectric/dataset_variant_02.pt",
+  "fold": 0,
+  "node_feature_type": "continuous",
+  "node_input_dim": 113,
+  "edge_feature_type": "continuous",
+  "edge_input_dim": 32,
+  "edge_attr_offset": 0,
+  "task_type": "regression",
+  "out_dim": 1,
+  "metric": "mae",
+  "supervised_loss": "l1",
+  "target_normalization": "train_zscore",
+  "target_names": [
+    "refractive_index"
+  ],
+  "generic_graph": true
+}

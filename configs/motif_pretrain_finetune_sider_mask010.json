@@ -1,0 +1,7 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_sider.json",
+  "mask_probability": 0.1,
+  "pretrain_learning_rate": 0.0005,
+  "pretrain_dropout": 0.15,
+  "pretrain_epochs": 200
+}

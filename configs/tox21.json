@@ -1,0 +1,37 @@
+{
+  "dataset": "tox21",
+  "artifact_path": "data/tox21/dataset.pt",
+  "task_type": "multilabel_classification",
+  "metric": "rocauc",
+  "out_dim": 12,
+  "node_cardinalities": [
+    119,
+    5,
+    12,
+    12,
+    10,
+    6,
+    6,
+    2,
+    2
+  ],
+  "edge_cardinalities": [
+    5,
+    6,
+    2
+  ],
+  "edge_attr_offset": 0,
+  "hidden_dim": 256,
+  "gin_layers": 3,
+  "transformer_layers": 4,
+  "transformer_heads": 8,
+  "transformer_ffn_dim": 512,
+  "dropout": 0.1,
+  "batch_size": 128,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "epochs": 200,
+  "warmup_epochs": 10,
+  "grad_clip": 1.0,
+  "num_workers": 4
+}

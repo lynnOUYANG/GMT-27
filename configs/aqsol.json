@@ -1,0 +1,28 @@
+{
+  "dataset": "aqsol",
+  "artifact_path": "data/aqsol/dataset.pt",
+  "task_type": "regression",
+  "supervised_loss": "mse",
+  "metric": "mae",
+  "out_dim": 1,
+  "node_cardinalities": [
+    65
+  ],
+  "edge_cardinalities": [
+    4
+  ],
+  "edge_attr_offset": 1,
+  "hidden_dim": 256,
+  "gin_layers": 3,
+  "transformer_layers": 4,
+  "transformer_heads": 8,
+  "transformer_ffn_dim": 512,
+  "dropout": 0.1,
+  "batch_size": 128,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "epochs": 200,
+  "warmup_epochs": 10,
+  "grad_clip": 1.0,
+  "num_workers": 4
+}

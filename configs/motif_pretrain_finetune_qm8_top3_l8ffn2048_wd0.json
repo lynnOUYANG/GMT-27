@@ -1,0 +1,18 @@
+{
+  "base_config_path": "configs/frozen_node_motif512_qm8.json",
+  "variant": "qm8_12_std_node_vq512_motif32_top3_rwpe8_l1_l8ffn2048_wd0_cosine300",
+  "transformer_layers": 8,
+  "transformer_ffn_dim": 2048,
+  "motif_top_k": 3,
+  "motif_selection_cache_path": "artifacts/motif_selection/qm8_q32_true_sed_top3_lr1e3_drop015.pt",
+  "pretrain_epochs": 200,
+  "pretrain_learning_rate": 0.0003,
+  "pretrain_dropout": 0.1,
+  "downstream_lr_schedule": "cosine",
+  "learning_rate": 0.0009,
+  "dropout": 0.025,
+  "weight_decay": 0.0,
+  "epochs": 300,
+  "warmup_epochs": 20,
+  "ensemble_top_k": 5
+}
