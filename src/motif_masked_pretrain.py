@@ -15,8 +15,8 @@ import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_batch
 
-from motif_fusion import FrozenMotifResources, load_frozen_motif_resources
-from rwpe import dense_rwpe_for_batch, prepare_rwpe
+from src.motif_fusion import FrozenMotifResources, load_frozen_motif_resources
+from src.rwpe import dense_rwpe_for_batch, prepare_rwpe
 from train import load_splits, make_loaders, set_seed
 from train_frozen_vq import load_frozen_node_vq, set_vq_frozen
 from train_vq import GINEVQTransformer, ResidualEMAVectorQuantizer, set_gin_frozen

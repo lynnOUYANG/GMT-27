@@ -10,7 +10,7 @@ for dataset in molesol molbace; do
   seed=0
   [[ "$dataset" == "molesol" ]] && seed=2
   read -r -a seeds <<< "${SEEDS:-$seed}"
-  "$PYTHON" prepare_motif_artifacts.py \
+  "$PYTHON" -m src.prepare_motif_artifacts \
     --config "configs/motif_${dataset}.json" \
     --verify-vf2-samples 8
   "$PYTHON" train_motif_tokenizer.py \

@@ -19,7 +19,7 @@ from train import (
     validate_supervised_loss_policy,
 )
 from train_frozen_vq import train as train_frozen_vq
-from motif_masked_pretrain import train as train_motif_masked
+from src.motif_masked_pretrain import train as train_motif_masked
 
 
 def parse_args() -> argparse.Namespace:

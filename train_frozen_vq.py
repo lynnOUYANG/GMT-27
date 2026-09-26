@@ -17,9 +17,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_batch
 
-from motif_fusion import FrozenMotifResources, load_frozen_motif_resources
+from src.motif_fusion import FrozenMotifResources, load_frozen_motif_resources
 from configuration import load_config
-from rwpe import dense_rwpe_for_batch, prepare_rwpe
+from src.rwpe import dense_rwpe_for_batch, prepare_rwpe
 from train import (
     compute_metric,
     denormalize_targets,

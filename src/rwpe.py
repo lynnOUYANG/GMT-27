@@ -8,12 +8,14 @@ from typing import Any
 import torch
 from torch_geometric.utils import to_dense_adj, to_dense_batch, to_undirected
 
+from configuration import ROOT
+
 
 def rwpe_cache_path(config: dict[str, Any], records: list[dict[str, Any]]) -> Path:
     root = Path(
         config.get(
             "rwpe_cache_dir",
-            str(Path(__file__).resolve().parent / "artifacts" / "rwpe"),
+            str(ROOT / "artifacts" / "rwpe"),
         )
     )
     num_nodes = sum(int(record["x"].shape[0]) for record in records)

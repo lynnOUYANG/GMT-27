@@ -35,10 +35,10 @@ from train import (
     target_stats_from_payload,
     validate_supervised_loss_policy,
 )
-from motif_fusion import TypeAwareTransformerEncoder
+from src.motif_fusion import TypeAwareTransformerEncoder
 from configuration import load_config
 from node_tokenizer.raw_gine import RawFeatureGINEEncoder
-from rwpe import dense_rwpe_for_batch, prepare_rwpe
+from src.rwpe import dense_rwpe_for_batch, prepare_rwpe
 
 
 def parse_args() -> argparse.Namespace:
