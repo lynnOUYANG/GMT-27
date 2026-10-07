@@ -65,6 +65,25 @@ Run the configuration checks:
 python -m pytest -p no:cacheprovider src.test_submission_configs
 ```
 
+## Motif tokenizer objective
+
+Motif tokenizer training uses a shared GINE on node/edge type labels. Its
+matching cost averages softmax-weighted cosine distances over template nodes.
+For each host graph, the ranking loss sums every occurring/absent motif pair
+from `membership_train_val.pt`. The collision term uses the same assignments,
+normalizes by the number of template-node pairs, and sums over all evaluated
+motif/host pairs. Both losses are averaged over host graphs in each minibatch.
+Motif token embeddings use mean pooling of template-node representations.
+
+`sed_assignment_temperature` controls the shared assignment temperature
+(falling back to `sed_pair_collision_temperature`); `sed_pair_collision_loss_weight`
+is the collision coefficient. `sed_graph_batch_size` can set the number of host
+graphs per batch; its default is `max(1, sed_batch_size // motif_num_queries)`.
+The complete vocabulary is retained for each graph, so this objective does more
+work than the previous sampled, motif-centered training. Old pair caches are
+not used by this trainer. Existing checkpoints require retraining to reflect
+the new objective; their encoder and readout interfaces remain compatible.
+
 ## Repository layout
 
 ```text

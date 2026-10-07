@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train the migrated motif-token pipeline label-only SED-GINE motif tokenizer."""
+"""Train node soft matching with within-graph motif ranking and collision regularization."""
 
 from __future__ import annotations
 
@@ -37,111 +37,114 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-class MotifPairDataset(Dataset):
-    def __init__(self, pairs: list[dict], queries: list[dict], records: list[dict], config: dict):
-        self.pairs = pairs
-        self.query_by_id = {int(item["query_id"]): item["data"] for item in queries}
-        target_ids = sorted(
-            {int(item["target_id"]) for item in pairs if "target_data" not in item}
-        )
-        self.target_by_id = {
-            target_id: record_to_label_graph(records[target_id], config) for target_id in target_ids
-        }
-        self.order = sorted(
-            range(len(pairs)),
-            key=lambda index: (
-                int(pairs[index]["query_id"]),
-                0 if bool(pairs[index]["meta"]["is_positive"]) else 1,
-                index,
-            ),
-        )
+class MotifGraphDataset(Dataset):
+    """Keep the full motif vocabulary together for each host graph."""
+
+    def __init__(self, queries: list[dict], records: list[dict], membership: list,
+                 graph_ids: list[int], config: dict):
+        self.queries = sorted(queries, key=lambda item: int(item["query_id"]))
+        if not self.queries or [int(item["query_id"]) for item in self.queries] != list(range(len(queries))):
+            raise ValueError("Motif query ids must be contiguous from zero")
+        self.records, self.config = records, config
+        self.graph_ids = list(graph_ids)
+        self.positives = []
+        for graph_id in self.graph_ids:
+            ids = {int(value) for value in membership[graph_id]}
+            if any(value < 0 or value >= len(queries) for value in ids):
+                raise ValueError("Membership contains an invalid motif ID")
+            self.positives.append(ids)
 
     def __len__(self) -> int:
-        return len(self.order)
+        return len(self.graph_ids)
 
     def __getitem__(self, item: int):
-        pair = self.pairs[self.order[item]]
-        meta = pair["meta"]
-        return (
-            self.query_by_id[int(pair["query_id"])],
-            pair.get("target_data", self.target_by_id.get(int(pair["target_id"]))),
-            {"query_id": int(pair["query_id"]), "is_positive": bool(meta["is_positive"])},
-        )
+        graph_id = self.graph_ids[item]
+        target = record_to_label_graph(self.records[graph_id], self.config)
+        return [
+            (query["data"], target, {
+                "query_id": int(query["query_id"]),
+                "target_id": graph_id,
+                "is_positive": int(query["query_id"]) in self.positives[item],
+            })
+            for query in self.queries
+        ]
 
 
 def collate_motif_pairs(items):
-    queries, targets, metadata = zip(*items)
-    unique_queries = []
+    queries, targets, metadata = zip(*(pair for graph_pairs in items for pair in graph_pairs))
+    unique_queries, unique_targets = [], []
     query_positions: dict[int, int] = {}
-    query_batch_index = []
-    for query, meta in zip(queries, metadata):
+    target_positions: dict[int, int] = {}
+    query_batch_index, target_batch_index = [], []
+    for query, target, meta in zip(queries, targets, metadata):
         query_id = int(meta["query_id"])
         if query_id not in query_positions:
             query_positions[query_id] = len(unique_queries)
             unique_queries.append(query)
         query_batch_index.append(query_positions[query_id])
+        target_id = int(meta["target_id"])
+        if target_id not in target_positions:
+            target_positions[target_id] = len(unique_targets)
+            unique_targets.append(target)
+        target_batch_index.append(target_positions[target_id])
     return (
         Batch.from_data_list(unique_queries),
-        Batch.from_data_list(list(targets)),
+        Batch.from_data_list(unique_targets),
         {
             "query_id": torch.tensor([item["query_id"] for item in metadata], dtype=torch.long),
             "query_batch_index": torch.tensor(query_batch_index, dtype=torch.long),
+            "target_id": torch.tensor([item["target_id"] for item in metadata], dtype=torch.long),
+            "target_batch_index": torch.tensor(target_batch_index, dtype=torch.long),
             "is_positive": torch.tensor([item["is_positive"] for item in metadata], dtype=torch.bool),
         },
     )
 
 
 def sed_rank_loss(prediction: torch.Tensor, meta: dict, config: dict) -> torch.Tensor:
-    """Unchanged motif-token pipeline pairwise ranking supervision."""
-    weight = float(config.get("sed_rank_loss_weight", 0.0) or 0.0)
+    """Sum all positive/negative motif comparisons within each host graph."""
+    weight = float(config.get("sed_rank_loss_weight", 1.0))
     if weight <= 0 or meta is None:
-        return prediction.new_tensor(0.0)
-    query_ids = meta["query_id"].to(prediction.device)
+        return prediction.sum() * 0.0
+    target_ids = meta["target_id"].to(prediction.device)
     is_positive = meta["is_positive"].to(prediction.device)
     margin = float(config.get("sed_rank_margin", 1.0))
+    if not math.isfinite(margin) or margin <= 0:
+        raise ValueError("sed_rank_margin must be finite and positive")
     losses = []
-    for query_id in torch.unique(query_ids):
-        mask = query_ids == query_id
+    for target_id in torch.unique(target_ids):
+        mask = target_ids == target_id
         positive = prediction[mask & is_positive]
         negative = prediction[mask & ~is_positive]
-        if positive.numel() == 0 or negative.numel() == 0:
-            continue
-        losses.append(F.relu(margin + positive[:, None] - negative[None, :]).mean())
+        losses.append(F.relu(margin + positive[:, None] - negative[None, :]).sum())
     if not losses:
-        return prediction.new_tensor(0.0)
+        return prediction.sum() * 0.0
     return torch.stack(losses).mean() * weight
 
 
-def sed_pair_collision_loss(query_pair_sets, target_pair_sets, meta: dict, config: dict):
-    """Unchanged motif-token pipeline positive-pair collision supervision."""
+def sed_pair_collision_loss(assignments, meta: dict, config: dict):
+    """Normalized template-node collisions, using the same B as the soft cost."""
     weight = float(config.get("sed_pair_collision_loss_weight", 0.1) or 0.0)
     if weight <= 0:
-        return query_pair_sets[0].new_tensor(0.0)
-    temperature = float(config.get("sed_pair_collision_temperature", 0.1))
-    if temperature <= 0:
-        raise ValueError("sed_pair_collision_temperature must be positive")
-    is_positive = meta["is_positive"].to(query_pair_sets[0].device)
+        return assignments[0].sum() * 0.0
     losses = []
-    for query_pairs, target_pairs, positive in zip(query_pair_sets, target_pair_sets, is_positive):
-        if not bool(positive.item()) or query_pairs.shape[0] < 2 or target_pairs.shape[0] == 0:
+    for assignment in assignments:
+        if assignment.shape[0] < 2:
+            losses.append(assignment.sum() * 0.0)
             continue
-        similarity = F.normalize(query_pairs, dim=-1) @ F.normalize(target_pairs, dim=-1).t()
-        assignment = F.softmax(similarity / temperature, dim=-1)
         column_mass = assignment.sum(dim=0)
         unordered_collisions = 0.5 * (column_mass.square().sum() - assignment.square().sum())
-        pair_count = query_pairs.shape[0] * (query_pairs.shape[0] - 1) / 2.0
+        pair_count = assignment.shape[0] * (assignment.shape[0] - 1) / 2.0
         losses.append(unordered_collisions.clamp_min(0.0) / pair_count)
-    if not losses:
-        return query_pair_sets[0].new_tensor(0.0)
-    return torch.stack(losses).mean() * weight
+    num_graphs = int(torch.unique(meta["target_id"]).numel())
+    return torch.stack(losses).sum() * weight / max(num_graphs, 1)
 
 
 def forward_loss(model: MotifTokenizer, query, target, meta: dict, config: dict):
-    prediction, query_pairs, target_pairs = model.predict_sed(
-        query, target, meta, return_edge_pair_sets=True
+    prediction, assignments = model.predict_sed(
+        query, target, meta, return_assignments=True
     )
     return prediction, sed_rank_loss(prediction, meta, config) + sed_pair_collision_loss(
-        query_pairs, target_pairs, meta, config
+        assignments, meta, config
     )
 
 
@@ -156,7 +159,7 @@ def run_loader(
     training = optimizer is not None
     model.train(training)
     loss_sum = 0.0
-    batches = 0
+    graphs = 0
     for batch_index, (query, target, meta) in enumerate(loader):
         if max_batches is not None and batch_index >= max_batches:
             break
@@ -167,24 +170,20 @@ def run_loader(
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    list(model.encoder.parameters()) + list(model.edge_projector.parameters()),
+                    model.sed_parameters(),
                     float(config["sed_grad_clip"]),
                 )
                 optimizer.step()
-        loss_sum += float(loss.item())
-        batches += 1
-    if not batches:
-        raise RuntimeError("Motif pair loader produced no batches")
-    return loss_sum / batches
+        loss_sum += float(loss.item()) * target.num_graphs
+        graphs += target.num_graphs
+    if not graphs:
+        raise RuntimeError("Motif graph loader produced no batches")
+    return loss_sum / graphs
 
 
 def checkpoint_state(model: MotifTokenizer, config: dict, best: dict) -> dict[str, Any]:
     return {
-        "encoder": {key: value.detach().cpu().clone() for key, value in model.encoder.state_dict().items()},
-        "edge_projector": {
-            key: value.detach().cpu().clone() for key, value in model.edge_projector.state_dict().items()
-        },
-        "meta": {"sed_loss_type": model.sed_loss_type, "sed_distance": model.sed_distance},
+        **model.checkpoint_state(),
         "training": best,
         "config": config,
     }
@@ -199,29 +198,33 @@ def train(config: dict[str, Any], output_dir: Path, device_name: str, max_batche
     set_seed(int(config.get("seed", 0)))
     payload = load_dataset_payload(config)
     queries = torch.load(artifact_dir / "queries.pt", map_location="cpu", weights_only=False)
-    train_payload = torch.load(artifact_dir / "train_pairs.pt", map_location="cpu", weights_only=False)
-    val_payload = torch.load(artifact_dir / "val_pairs.pt", map_location="cpu", weights_only=False)
+    membership = torch.load(artifact_dir / "membership_train_val.pt", map_location="cpu", weights_only=False)
+    train_count, val_count = len(payload["splits"]["train"]), len(payload["splits"]["valid"])
+    graph_membership = membership["graph_to_query_ids"]
+    if len(graph_membership) != train_count + val_count:
+        raise ValueError("Motif membership must follow train+validation graph order")
+    if len(queries) != int(config["motif_num_queries"]):
+        raise ValueError("Motif query count does not match configuration")
     common = {
-        "batch_size": int(config["sed_batch_size"]),
-        "shuffle": False,
+        "batch_size": int(config.get("sed_graph_batch_size", max(1, int(config["sed_batch_size"]) // len(queries)))),
         "num_workers": int(config.get("num_workers", 0)),
         "collate_fn": collate_motif_pairs,
     }
     ordered_records = [payload["records"][record_id] for record_id in motif_record_indices(payload)]
     train_loader = DataLoader(
-        MotifPairDataset(train_payload["pairs"], queries, ordered_records, config), **common
+        MotifGraphDataset(queries, ordered_records, graph_membership, list(range(train_count)), config),
+        shuffle=True, **common
     )
     val_loader = DataLoader(
-        MotifPairDataset(val_payload["pairs"], queries, ordered_records, config), **common
+        MotifGraphDataset(queries, ordered_records, graph_membership, list(range(train_count, train_count + val_count)), config),
+        shuffle=False, **common
     )
-    train_group = int(config["train_positive_targets"]) + int(config["train_negative_targets"])
-    val_group = int(config["val_positive_targets"]) + int(config["val_negative_targets"])
-    if int(config["sed_batch_size"]) % train_group or int(config["sed_batch_size"]) % val_group:
-        raise ValueError("sed_batch_size must contain complete train and validation query groups")
     device = torch.device(device_name)
     model = MotifTokenizer(config).to(device)
+    config = {**config, "sed_distance": model.sed_distance,
+              "sed_assignment_temperature": model.assignment_temperature}
     optimizer = torch.optim.AdamW(
-        model.parameters(),
+        model.sed_parameters(),
         lr=float(config["motif_learning_rate"]),
         weight_decay=float(config["motif_weight_decay"]),
     )
@@ -278,7 +281,9 @@ def train(config: dict[str, Any], output_dir: Path, device_name: str, max_batche
         raise RuntimeError("Motif tokenizer produced no finite validation checkpoint")
     result = {
         "dataset": config["dataset"],
-        "objective": "motif-token pipeline SED pairwise ranking plus pair collision",
+        "objective": "node_soft_matching_within_graph_ranking_plus_node_collision",
+        "collision_scope": "all_motif_graph_pairs",
+        "loss_reduction": "sum_per_graph_mean_over_graphs",
         "input_fields": ["node_label", "edge_label", "edge_index"],
         "graph_labels_used": False,
         "best_epoch": int(best_record["epoch_number"]),
@@ -288,8 +293,9 @@ def train(config: dict[str, Any], output_dir: Path, device_name: str, max_batche
         "checkpoint": str(output_dir / "motif_tokenizer.pt"),
         "motif_artifact_dir": str(artifact_dir),
         "num_queries": len(queries),
-        "train_pairs": len(train_payload["pairs"]),
-        "val_pairs": len(val_payload["pairs"]),
+        "train_pairs": train_count * len(queries),
+        "val_pairs": val_count * len(queries),
+        "graph_batch_size": common["batch_size"],
         "elapsed_seconds": time.time() - start_time,
     }
     (output_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

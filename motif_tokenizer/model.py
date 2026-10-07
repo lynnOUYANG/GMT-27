@@ -1,11 +1,13 @@
-"""motif-token pipeline SED-GINE motif tokenizer without unrelated node-token modules."""
+"""Shared GINE motif tokenizer with node-level soft matching."""
 
 from __future__ import annotations
+
+import math
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GINEConv
+from torch_geometric.nn import GINEConv, global_mean_pool
 
 
 def create_activation(name: str) -> nn.Module:
@@ -99,14 +101,23 @@ def _split_edges_by_graph(edge_rep: torch.Tensor, batch) -> list[torch.Tensor]:
 
 
 class MotifTokenizer(nn.Module):
-    """Label-only subset of motif-token pipeline's GINESEDModel."""
+    """Encode typed motifs and graphs in the same node representation space."""
 
     def __init__(self, config: dict) -> None:
         super().__init__()
         out_dim = int(config["motif_out_dim"])
         activation = config.get("motif_activation", "prelu")
         self.sed_loss_type = config.get("sed_loss_type", "rank")
-        self.sed_distance = config.get("sed_distance", "node_cosine_assign_order")
+        distance = config.get("sed_distance", "node_soft_assignment")
+        if distance not in {"node_soft_assignment", "node_cosine_assign_order"}:
+            raise ValueError(f"Unsupported SED distance: {distance}")
+        # Accept the historical configuration name, but record the new objective.
+        self.sed_distance = "node_soft_assignment"
+        self.assignment_temperature = float(config.get(
+            "sed_assignment_temperature", config.get("sed_pair_collision_temperature", 0.1)
+        ))
+        if not math.isfinite(self.assignment_temperature) or self.assignment_temperature <= 0:
+            raise ValueError("sed_assignment_temperature must be finite and positive")
         self.encoder = GINEEncoder(
             in_dim=int(config["motif_node_label_dim"]),
             edge_dim=int(config["motif_edge_label_dim"]),
@@ -118,6 +129,7 @@ class MotifTokenizer(nn.Module):
             residual=bool(config.get("motif_residual", True)),
             norm=config.get("motif_norm", "layernorm"),
         )
+        # Retain this unused module for compatibility with checkpoint readers.
         self.edge_projector = nn.Sequential(
             nn.Linear(out_dim * 2, out_dim),
             self._projector_activation(activation),
@@ -142,6 +154,10 @@ class MotifTokenizer(nn.Module):
             raise ValueError("Motif tokenizer input requires only node_label and edge_label_onehot")
         return self.encoder(batch.node_label, batch.edge_index, batch.edge_label_onehot)
 
+    def encode_tokens(self, batch) -> torch.Tensor:
+        """Mean READOUT of learned template-node representations."""
+        return global_mean_pool(self.encode_gin_nodes(batch), batch.batch, size=batch.num_graphs)
+
     def encode_gin_edge_pairs(self, batch) -> list[torch.Tensor]:
         node_rep = self.encode_gin_nodes(batch)
         if batch.edge_index.numel() == 0:
@@ -150,49 +166,39 @@ class MotifTokenizer(nn.Module):
         source, target = batch.edge_index
         return _split_edges_by_graph(torch.cat([node_rep[source], node_rep[target]], dim=-1), batch)
 
-    def predict_sed(self, query, target, meta, return_edge_pair_sets: bool = False):
-        if self.sed_distance != "node_cosine_assign_order":
-            raise ValueError(f"Unsupported SED distance: {self.sed_distance}")
-        query_pairs = self.encode_gin_edge_pairs(query)
-        target_pairs = self.encode_gin_edge_pairs(target)
-        query_ids = meta["query_id"].to(query.batch.device)
-        query_batch_index = meta["query_batch_index"].to(query.batch.device)
-        predictions: list[torch.Tensor | None] = [None] * len(target_pairs)
-        for query_id in torch.unique(query_ids, sorted=True):
-            pair_indices = torch.nonzero(query_ids == query_id, as_tuple=False).view(-1).tolist()
-            motif_pairs = query_pairs[int(query_batch_index[pair_indices[0]])]
-            targets = [target_pairs[index] for index in pair_indices]
-            sizes = [int(value.shape[0]) for value in targets]
-            if motif_pairs.shape[0] == 0:
-                for index in pair_indices:
-                    predictions[index] = motif_pairs.sum()
+    def predict_sed(self, query, target, meta, return_assignments: bool = False):
+        """Mean soft cosine cost over template nodes; return the same B for regularization."""
+        query_sizes = (query.ptr[1:] - query.ptr[:-1]).tolist()
+        target_sizes = (target.ptr[1:] - target.ptr[:-1]).tolist()
+        if not query_sizes or min(query_sizes) <= 0 or not target_sizes or min(target_sizes) <= 0:
+            raise ValueError("Soft matching requires nonempty motifs and host graphs")
+        query_nodes = self.encode_gin_nodes(query).split(query_sizes)
+        target_nodes = self.encode_gin_nodes(target).split(target_sizes)
+        query_index = meta["query_batch_index"].tolist()
+        target_index = meta["target_batch_index"]
+        predictions = [None] * len(query_index)
+        assignments = [None] * len(query_index)
+        # Process all template nodes for one host together. Each row of B is
+        # normalized only over that host's nodes, never over other graphs.
+        for host_index, host_nodes in enumerate(target_nodes):
+            pair_indices = torch.nonzero(target_index == host_index, as_tuple=False).view(-1).tolist()
+            if not pair_indices:
                 continue
-            if sum(sizes) == 0:
-                fallback = motif_pairs.sum() * 0.0 + float(motif_pairs.shape[0])
-                for index in pair_indices:
-                    predictions[index] = fallback
-                continue
-            similarity = F.normalize(motif_pairs, dim=-1) @ F.normalize(
-                torch.cat(targets, dim=0), dim=-1
-            ).t()
-            start = 0
-            for index, size in zip(pair_indices, sizes):
-                end = start + size
-                if size == 0:
-                    predictions[index] = motif_pairs.sum() * 0.0 + float(motif_pairs.shape[0])
-                else:
-                    predictions[index] = torch.sum(1.0 - similarity[:, start:end].max(dim=-1).values)
-                start = end
+            templates = [query_nodes[query_index[index]] for index in pair_indices]
+            sizes = [nodes.shape[0] for nodes in templates]
+            similarity = F.normalize(torch.cat(templates), dim=-1) @ F.normalize(host_nodes, dim=-1).t()
+            assignment = F.softmax(similarity / self.assignment_temperature, dim=-1)
+            node_costs = (assignment * (1.0 - similarity)).sum(dim=-1)
+            for index, cost, weights in zip(pair_indices, node_costs.split(sizes), assignment.split(sizes)):
+                predictions[index] = cost.mean()
+                assignments[index] = weights
         if any(value is None for value in predictions):
-            raise RuntimeError("SED prediction did not cover every query-target pair")
+            raise RuntimeError("Soft matching did not cover every motif-graph pair")
         prediction = torch.stack(predictions)
-        if not return_edge_pair_sets:
-            return prediction
-        per_pair_queries = [query_pairs[int(index)] for index in query_batch_index]
-        return prediction, per_pair_queries, target_pairs
+        return (prediction, assignments) if return_assignments else prediction
 
     def sed_parameters(self) -> list[nn.Parameter]:
-        return list(self.encoder.parameters()) + list(self.edge_projector.parameters())
+        return list(self.encoder.parameters())
 
     def checkpoint_state(self) -> dict:
         return {
@@ -203,5 +209,10 @@ class MotifTokenizer(nn.Module):
                 name: value.detach().cpu().clone()
                 for name, value in self.edge_projector.state_dict().items()
             },
-            "meta": {"sed_loss_type": self.sed_loss_type, "sed_distance": self.sed_distance},
+            "meta": {
+                "sed_loss_type": self.sed_loss_type,
+                "sed_distance": self.sed_distance,
+                "assignment_temperature": self.assignment_temperature,
+                "rank_group": "host_graph",
+            },
         }
